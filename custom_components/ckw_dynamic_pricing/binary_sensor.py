@@ -6,7 +6,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import CKWPricingCoordinator, DOMAIN
+from . import CKWPricingCoordinator, DEFAULT_THRESHOLD, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -48,8 +48,9 @@ class CKWBelowThresholdBinarySensor(CoordinatorEntity, BinarySensorEntity):
     def is_on(self) -> bool:
         """Return True if price is below threshold."""
         if self.coordinator.data:
-            current_price = self.coordinator.data.get("current_price", 0)
-            threshold = self.coordinator.data.get("threshold", 10)
+            # Coordinator speichert Rappen, die Schwelle ist in CHF/kWh
+            current_price = self.coordinator.data.get("current_price", 0) / 100
+            threshold = self.coordinator.data.get("threshold", DEFAULT_THRESHOLD)
             return current_price < threshold
         return False
 
@@ -63,8 +64,8 @@ class CKWBelowThresholdBinarySensor(CoordinatorEntity, BinarySensorEntity):
         """Return extra state attributes."""
         if self.coordinator.data:
             return {
-                "current_price": self.coordinator.data.get("current_price", 0),
-                "threshold": self.coordinator.data.get("threshold", 10),
+                "current_price": round(self.coordinator.data.get("current_price", 0) / 100, 4),
+                "threshold": self.coordinator.data.get("threshold", DEFAULT_THRESHOLD),
             }
         return {}
 
