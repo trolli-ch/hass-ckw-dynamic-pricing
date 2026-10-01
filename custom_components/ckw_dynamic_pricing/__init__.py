@@ -6,6 +6,7 @@ from typing import Any, Dict
 import aiohttp
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -14,13 +15,20 @@ from .price import TIMEZONE, get_day_prices
 _LOGGER = logging.getLogger(__name__)
 
 DOMAIN = "ckw_dynamic_pricing"
-PLATFORMS = ["sensor", "binary_sensor"]
+PLATFORMS = ["sensor"]
 SCAN_INTERVAL = timedelta(hours=6)
-DEFAULT_THRESHOLD = 0.25  # CHF/kWh
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up CKW Dynamic Pricing from a config entry."""
+    # Version 2.0.0b4 removed the below-threshold binary sensor
+    registry = er.async_get(hass)
+    obsolete = registry.async_get_entity_id(
+        "binary_sensor", DOMAIN, f"{entry.entry_id}_below_threshold"
+    )
+    if obsolete:
+        registry.async_remove(obsolete)
+
     hass.data.setdefault(DOMAIN, {})
     coordinator = CKWPricingCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
@@ -32,14 +40,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             hass, coordinator.async_midnight_rollover, hour=0, minute=0, second=5
         )
     )
-    # Reload when the options (e.g. the price threshold) change
-    entry.async_on_unload(entry.add_update_listener(_async_options_updated))
     return True
-
-
-async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Reload the entry so changed options take effect."""
-    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -79,9 +80,7 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
         try:
             if not prices_today:
                 raise UpdateFailed("No cached prices for the new day")
-            data = self._process_data(
-                prices_today, prices_all, self.data.get("threshold", DEFAULT_THRESHOLD)
-            )
+            data = self._process_data(prices_today, prices_all)
         except UpdateFailed:
             await self.async_request_refresh()
             return
@@ -114,7 +113,6 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self) -> Dict[str, Any]:
         """Fetch data from CKW API for today and tomorrow."""
-        threshold = float(self.config.get("price_threshold", DEFAULT_THRESHOLD))
 
         today = datetime.now(TIMEZONE).date()
         tomorrow = today + timedelta(days=1)
@@ -128,12 +126,12 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
                 raise UpdateFailed("No price data received from CKW API for today")
 
             combined = prices_today + prices_tomorrow
-            return self._process_data(prices_today, combined, threshold)
+            return self._process_data(prices_today, combined)
 
         except aiohttp.ClientError as err:
             raise UpdateFailed(f"Error connecting to CKW API: {err}") from err
 
-    def _process_data(self, prices_today: list, prices_all: list, threshold: float = DEFAULT_THRESHOLD) -> Dict[str, Any]:
+    def _process_data(self, prices_today: list, prices_all: list) -> Dict[str, Any]:
         """Process API data."""
         if not prices_today:
             return {}
@@ -151,6 +149,5 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
             "min_price": round(min(today_prices) * 100, 4),
             "max_price": round(max(today_prices) * 100, 4),
             "avg_price": round(sum(today_prices) / len(today_prices) * 100, 4),
-            "threshold": threshold,
             "prices": prices_all,
         }
