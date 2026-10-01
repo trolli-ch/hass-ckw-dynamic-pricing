@@ -1,5 +1,6 @@
-## Konfiguration
-<img width="1024" height="1024" alt="ckwdynha" src="https://github.com/user-attachments/assets/0600ed86-c765-4169-866f-3e551da9f994" />
+<p align="center">
+  <img src="docs/logo.png" alt="CKW Dynamic Pricing" width="300">
+</p>
 
 # CKW Dynamic Pricing for Home Assistant
 

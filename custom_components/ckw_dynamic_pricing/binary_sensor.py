@@ -7,7 +7,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import CKWPricingCoordinator, DOMAIN
+from . import CKWPricingCoordinator, DEFAULT_THRESHOLD, DOMAIN
 from .price import get_current_price
 
 _LOGGER = logging.getLogger(__name__)
@@ -55,11 +55,11 @@ class CKWBelowThresholdBinarySensor(CoordinatorEntity, BinarySensorEntity):
 
     @property
     def _current_price(self) -> float | None:
-        """Return the current price in Rp./kWh, or None if unknown."""
+        """Return the current price in CHF/kWh, or None if unknown."""
         if not self.coordinator.data:
             return None
         price = get_current_price(self.coordinator.data.get("prices", []))
-        return None if price is None else round(price * 100, 4)
+        return None if price is None else round(price, 4)
 
     @property
     def unique_id(self) -> str:
@@ -73,11 +73,11 @@ class CKWBelowThresholdBinarySensor(CoordinatorEntity, BinarySensorEntity):
 
     @property
     def is_on(self) -> bool:
-        """Return True if price is below threshold; False if the price is unknown."""
+        """Return True if price (CHF/kWh) is below threshold; False if unknown."""
         current_price = self._current_price
         if current_price is None:
             return False
-        threshold = self.coordinator.data.get("threshold", 10)
+        threshold = self.coordinator.data.get("threshold", DEFAULT_THRESHOLD)
         return current_price < threshold
 
     @property
@@ -91,7 +91,7 @@ class CKWBelowThresholdBinarySensor(CoordinatorEntity, BinarySensorEntity):
         if self.coordinator.data:
             return {
                 "current_price": self._current_price,
-                "threshold": self.coordinator.data.get("threshold", 10),
+                "threshold": self.coordinator.data.get("threshold", DEFAULT_THRESHOLD),
             }
         return {}
 

@@ -15,6 +15,7 @@ _LOGGER = logging.getLogger(__name__)
 DOMAIN = "ckw_dynamic_pricing"
 PLATFORMS = ["sensor", "binary_sensor"]
 SCAN_INTERVAL = timedelta(hours=6)
+DEFAULT_THRESHOLD = 0.25  # CHF/kWh
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -77,7 +78,7 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self) -> Dict[str, Any]:
         """Fetch data from CKW API for today and tomorrow."""
         threshold_state = self.hass.states.get("input_number.ckw_price_threshold")
-        threshold = float(threshold_state.state) if threshold_state else self.config.get("price_threshold", 10)
+        threshold = float(threshold_state.state) if threshold_state else self.config.get("price_threshold", DEFAULT_THRESHOLD)
 
         today = datetime.now(TIMEZONE).date()
         tomorrow = today + timedelta(days=1)
@@ -96,7 +97,7 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
         except aiohttp.ClientError as err:
             raise UpdateFailed(f"Error connecting to CKW API: {err}") from err
 
-    def _process_data(self, prices_today: list, prices_all: list, threshold: float = 10) -> Dict[str, Any]:
+    def _process_data(self, prices_today: list, prices_all: list, threshold: float = DEFAULT_THRESHOLD) -> Dict[str, Any]:
         """Process API data."""
         if not prices_today:
             return {}
