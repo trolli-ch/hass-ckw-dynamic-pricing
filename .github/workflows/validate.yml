@@ -24,8 +24,6 @@ jobs:
       - uses: hacs/action@main
         with:
           category: integration
-          # Only required for the official HACS list, not for custom repositories
-          ignore: topics license
 
   tests:
     name: Unit tests
