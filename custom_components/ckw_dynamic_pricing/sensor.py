@@ -1,13 +1,14 @@
 """Sensor platform for CKW Dynamic Pricing."""
 import logging
-from datetime import datetime, timezone
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import CKWPricingCoordinator, DOMAIN
+from .price import get_current_price
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,6 +40,23 @@ class CKWPriceSensorBase(CoordinatorEntity, SensorEntity):
         super().__init__(coordinator)
         self.entry = entry
 
+    async def async_added_to_hass(self) -> None:
+        """Re-evaluate the state whenever a 15-minute price slot starts."""
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            async_track_time_change(
+                self.hass,
+                self._handle_time_change,
+                minute=(0, 15, 30, 45),
+                second=5,
+            )
+        )
+
+    @callback
+    def _handle_time_change(self, now) -> None:
+        """Write the state; the time-dependent value is recomputed from cached prices."""
+        self.async_write_ha_state()
+
     @property
     def available(self) -> bool:
         """Return if entity is available."""
@@ -59,21 +77,12 @@ class CKWCurrentPriceSensor(CKWPriceSensorBase):
         return "CKW Current Price"
 
     @property
-    def native_value(self) -> float:
-        """Return the state of the sensor."""
+    def native_value(self) -> float | None:
+        """Return the current price, or None if no slot covers the current time."""
         if not self.coordinator.data:
-            return 0
-        prices_raw = self.coordinator.data.get("prices", [])
-        now = datetime.now(tz=timezone.utc)
-        for entry in prices_raw:
-            try:
-                start = datetime.fromisoformat(entry["start_timestamp"])
-                end = datetime.fromisoformat(entry["end_timestamp"])
-                if start <= now < end:
-                    return round(entry["integrated"][0]["value"], 4)
-            except (KeyError, IndexError, ValueError):
-                continue
-        return 0
+            return None
+        price = get_current_price(self.coordinator.data.get("prices", []))
+        return None if price is None else round(price, 4)
 
     @property
     def native_unit_of_measurement(self) -> str:

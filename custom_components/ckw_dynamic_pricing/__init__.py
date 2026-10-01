@@ -1,12 +1,14 @@
 """CKW Dynamic Pricing Integration for Home Assistant."""
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, time, timedelta
 from typing import Any, Dict
 
 import aiohttp
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+
+from .price import TIMEZONE
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -49,8 +51,8 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
 
     async def _fetch_day(self, session: aiohttp.ClientSession, date) -> list:
         """Fetch prices for a specific date."""
-        start = f"{date}T00:00:00+01:00"
-        end = f"{date}T23:59:00+01:00"
+        start = datetime.combine(date, time(0, 0), tzinfo=TIMEZONE).isoformat()
+        end = datetime.combine(date, time(23, 59), tzinfo=TIMEZONE).isoformat()
         params = {
             "tariff_name": self.config.get("tariff_name", "home_dynamic"),
             "start_timestamp": start,
@@ -77,8 +79,7 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
         threshold_state = self.hass.states.get("input_number.ckw_price_threshold")
         threshold = float(threshold_state.state) if threshold_state else self.config.get("price_threshold", 10)
 
-        tz_plus1 = timezone(timedelta(hours=1))
-        today = datetime.now(tz_plus1).date()
+        today = datetime.now(TIMEZONE).date()
         tomorrow = today + timedelta(days=1)
 
         try:
@@ -100,25 +101,6 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
         if not prices_today:
             return {}
 
-        now = datetime.now(tz=timezone.utc)
-
-        current_price = 0.0
-        for entry in prices_today:
-            try:
-                start = datetime.fromisoformat(entry["start_timestamp"])
-                end = datetime.fromisoformat(entry["end_timestamp"])
-
-                if start.tzinfo is None:
-                    start = start.replace(tzinfo=timezone.utc)
-                if end.tzinfo is None:
-                    end = end.replace(tzinfo=timezone.utc)
-
-                if start <= now < end:
-                    current_price = entry["integrated"][0]["value"]
-                    break
-            except (KeyError, IndexError, ValueError):
-                continue
-
         today_prices = [
             entry["integrated"][0]["value"]
             for entry in prices_today
@@ -129,7 +111,6 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
             raise UpdateFailed("No price data found in API response")
 
         return {
-            "current_price": round(current_price * 100, 4),
             "min_price": round(min(today_prices) * 100, 4),
             "max_price": round(max(today_prices) * 100, 4),
             "avg_price": round(sum(today_prices) / len(today_prices) * 100, 4),

@@ -2,11 +2,13 @@
 import logging
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import CKWPricingCoordinator, DOMAIN
+from .price import get_current_price
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,6 +36,31 @@ class CKWBelowThresholdBinarySensor(CoordinatorEntity, BinarySensorEntity):
         super().__init__(coordinator)
         self.entry = entry
 
+    async def async_added_to_hass(self) -> None:
+        """Re-evaluate the state whenever a 15-minute price slot starts."""
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            async_track_time_change(
+                self.hass,
+                self._handle_time_change,
+                minute=(0, 15, 30, 45),
+                second=5,
+            )
+        )
+
+    @callback
+    def _handle_time_change(self, now) -> None:
+        """Write the state; the current price is recomputed from cached prices."""
+        self.async_write_ha_state()
+
+    @property
+    def _current_price(self) -> float | None:
+        """Return the current price in Rp./kWh, or None if unknown."""
+        if not self.coordinator.data:
+            return None
+        price = get_current_price(self.coordinator.data.get("prices", []))
+        return None if price is None else round(price * 100, 4)
+
     @property
     def unique_id(self) -> str:
         """Return unique id."""
@@ -46,12 +73,12 @@ class CKWBelowThresholdBinarySensor(CoordinatorEntity, BinarySensorEntity):
 
     @property
     def is_on(self) -> bool:
-        """Return True if price is below threshold."""
-        if self.coordinator.data:
-            current_price = self.coordinator.data.get("current_price", 0)
-            threshold = self.coordinator.data.get("threshold", 10)
-            return current_price < threshold
-        return False
+        """Return True if price is below threshold; False if the price is unknown."""
+        current_price = self._current_price
+        if current_price is None:
+            return False
+        threshold = self.coordinator.data.get("threshold", 10)
+        return current_price < threshold
 
     @property
     def icon(self) -> str:
@@ -63,7 +90,7 @@ class CKWBelowThresholdBinarySensor(CoordinatorEntity, BinarySensorEntity):
         """Return extra state attributes."""
         if self.coordinator.data:
             return {
-                "current_price": self.coordinator.data.get("current_price", 0),
+                "current_price": self._current_price,
                 "threshold": self.coordinator.data.get("threshold", 10),
             }
         return {}
