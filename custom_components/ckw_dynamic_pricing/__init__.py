@@ -17,6 +17,7 @@ _LOGGER = logging.getLogger(__name__)
 DOMAIN = "ckw_dynamic_pricing"
 PLATFORMS = ["sensor"]
 SCAN_INTERVAL = timedelta(hours=6)
+RETRY_INTERVAL = timedelta(minutes=15)  # used after a failed API fetch
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -112,8 +113,17 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
             return []
 
     async def _async_update_data(self) -> Dict[str, Any]:
-        """Fetch data from CKW API for today and tomorrow."""
+        """Fetch data, polling again after 15 minutes if the API fails."""
+        try:
+            data = await self._fetch_all()
+        except UpdateFailed:
+            self.update_interval = RETRY_INTERVAL
+            raise
+        self.update_interval = SCAN_INTERVAL
+        return data
 
+    async def _fetch_all(self) -> Dict[str, Any]:
+        """Fetch data from CKW API for today and tomorrow."""
         today = datetime.now(TIMEZONE).date()
         tomorrow = today + timedelta(days=1)
 
