@@ -43,6 +43,7 @@ def _load_package():
     sys.modules["homeassistant.helpers"].entity_registry = sys.modules[
         "homeassistant.helpers.entity_registry"
     ]
+    _stub("homeassistant.helpers.aiohttp_client", async_get_clientsession=lambda hass: None)
     _stub("homeassistant.helpers.event", async_track_time_change=lambda *a, **k: None)
     _stub(
         "homeassistant.helpers.update_coordinator",
