@@ -20,4 +20,4 @@ Nach Installation:
 - Einstellungen → Geräte und Dienste
 - "+ Neue Integration erstellen"
 - "CKW Dynamic Pricing" suchen
-- Schwellenwert und Netzebene konfigurieren
+- Preisschwelle (CHF/kWh) konfigurieren; später unter "Konfigurieren" änderbar

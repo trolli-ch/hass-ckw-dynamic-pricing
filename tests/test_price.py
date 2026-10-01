@@ -1,7 +1,7 @@
 """Tests for the current-price helper (run: python -m unittest discover tests)."""
 import importlib.util
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 _spec = importlib.util.spec_from_file_location(
@@ -50,6 +50,16 @@ class CurrentPriceTest(unittest.TestCase):
         winter = datetime.combine(datetime(2026, 12, 1).date(), datetime.min.time(), tzinfo=price.TIMEZONE)
         self.assertEqual(summer.utcoffset(), timedelta(hours=2))
         self.assertEqual(winter.utcoffset(), timedelta(hours=1))
+
+    def test_get_day_prices_filters_by_swiss_local_date(self):
+        prices = [
+            slot("2026-07-01T23:45:00+02:00", "2026-07-02T00:00:00+02:00", 0.1),
+            slot("2026-07-02T00:00:00+02:00", "2026-07-02T00:15:00+02:00", 0.2),
+            slot("2026-07-02T00:15:00", "2026-07-02T00:30:00", 0.3),
+            {"start_timestamp": "bad"},
+        ]
+        day = price.get_day_prices(prices, date(2026, 7, 2))
+        self.assertEqual([e["integrated"][0]["value"] for e in day], [0.2, 0.3])
 
 
 if __name__ == "__main__":
