@@ -1,7 +1,7 @@
 """Price helpers for CKW Dynamic Pricing."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -35,3 +35,13 @@ def get_current_price(
         except (KeyError, IndexError, TypeError, ValueError):
             return None
     return None
+
+
+def get_day_prices(prices: list[dict[str, Any]], day: date) -> list[dict[str, Any]]:
+    """Return the slots starting on the given Swiss local date."""
+    result = []
+    for entry in prices:
+        start = parse_timestamp(entry.get("start_timestamp"))
+        if start is not None and start.astimezone(TIMEZONE).date() == day:
+            result.append(entry)
+    return result

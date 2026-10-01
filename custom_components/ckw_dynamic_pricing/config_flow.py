@@ -16,7 +16,6 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
         vol.Required("price_threshold", default=0.25): vol.All(
             vol.Coerce(float), vol.Range(min=0, max=100)
         ),
-        vol.Required("netzebene", default="N1"): vol.In(["N1", "N2", "N3"]),
     }
 )
 
