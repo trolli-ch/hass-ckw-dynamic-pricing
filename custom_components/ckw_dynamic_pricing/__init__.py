@@ -1,4 +1,5 @@
 """CKW Dynamic Pricing Integration for Home Assistant."""
+import asyncio
 import logging
 from datetime import date, datetime, time, timedelta
 from typing import Any, Dict
@@ -7,6 +8,7 @@ import aiohttp
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -108,8 +110,8 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
                     return []
                 data = await resp.json()
                 return data.get("prices", [])
-        except aiohttp.ClientError as err:
-            _LOGGER.warning("Error fetching CKW data for date %s: %s", date, err)
+        except (aiohttp.ClientError, asyncio.TimeoutError) as err:
+            _LOGGER.warning("Error fetching CKW data for date %s: %r", date, err)
             return []
 
     async def _async_update_data(self) -> Dict[str, Any]:
@@ -128,9 +130,12 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
         tomorrow = today + timedelta(days=1)
 
         try:
-            async with aiohttp.ClientSession() as session:
-                prices_today = await self._fetch_day(session, today)
-                prices_tomorrow = await self._fetch_day(session, tomorrow)
+            # Shared HA session (no new SSL context per fetch), both days in parallel
+            session = async_get_clientsession(self.hass)
+            prices_today, prices_tomorrow = await asyncio.gather(
+                self._fetch_day(session, today),
+                self._fetch_day(session, tomorrow),
+            )
 
             if not prices_today:
                 raise UpdateFailed("No price data received from CKW API for today")
@@ -156,8 +161,8 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
             raise UpdateFailed("No price data found in API response")
 
         return {
-            "min_price": round(min(today_prices) * 100, 4),
-            "max_price": round(max(today_prices) * 100, 4),
-            "avg_price": round(sum(today_prices) / len(today_prices) * 100, 4),
+            "min_price": round(min(today_prices), 4),
+            "max_price": round(max(today_prices), 4),
+            "avg_price": round(sum(today_prices) / len(today_prices), 4),
             "prices": prices_all,
         }

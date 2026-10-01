@@ -40,6 +40,15 @@ class CKWPriceSensorBase(CoordinatorEntity, SensorEntity):
         super().__init__(coordinator)
         self.entry = entry
 
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return self.coordinator.last_update_success
+
+
+class CKWCurrentPriceSensor(CKWPriceSensorBase):
+    """Sensor for current CKW price."""
+
     async def async_added_to_hass(self) -> None:
         """Re-evaluate the state whenever a 15-minute price slot starts."""
         await super().async_added_to_hass()
@@ -54,17 +63,8 @@ class CKWPriceSensorBase(CoordinatorEntity, SensorEntity):
 
     @callback
     def _handle_time_change(self, now) -> None:
-        """Write the state; the time-dependent value is recomputed from cached prices."""
+        """Write the state; the value is recomputed from cached prices."""
         self.async_write_ha_state()
-
-    @property
-    def available(self) -> bool:
-        """Return if entity is available."""
-        return self.coordinator.last_update_success
-
-
-class CKWCurrentPriceSensor(CKWPriceSensorBase):
-    """Sensor for current CKW price."""
 
     @property
     def unique_id(self) -> str:
@@ -114,11 +114,11 @@ class CKWMinPriceSensor(CKWPriceSensorBase):
         return "CKW Min Price"
 
     @property
-    def native_value(self) -> float:
+    def native_value(self) -> float | None:
         """Return the state of the sensor."""
-        if self.coordinator.data:
-            return round(self.coordinator.data.get("min_price", 0) / 100, 4)
-        return 0
+        if not self.coordinator.data:
+            return None
+        return self.coordinator.data.get("min_price")
 
     @property
     def native_unit_of_measurement(self) -> str:
@@ -145,11 +145,11 @@ class CKWMaxPriceSensor(CKWPriceSensorBase):
         return "CKW Max Price"
 
     @property
-    def native_value(self) -> float:
+    def native_value(self) -> float | None:
         """Return the state of the sensor."""
-        if self.coordinator.data:
-            return round(self.coordinator.data.get("max_price", 0) / 100, 4)
-        return 0
+        if not self.coordinator.data:
+            return None
+        return self.coordinator.data.get("max_price")
 
     @property
     def native_unit_of_measurement(self) -> str:
@@ -176,11 +176,11 @@ class CKWAvgPriceSensor(CKWPriceSensorBase):
         return "CKW Avg Price"
 
     @property
-    def native_value(self) -> float:
+    def native_value(self) -> float | None:
         """Return the state of the sensor."""
-        if self.coordinator.data:
-            return round(self.coordinator.data.get("avg_price", 0) / 100, 4)
-        return 0
+        if not self.coordinator.data:
+            return None
+        return self.coordinator.data.get("avg_price")
 
     @property
     def native_unit_of_measurement(self) -> str:
@@ -195,6 +195,9 @@ class CKWAvgPriceSensor(CKWPriceSensorBase):
 
 class CKWAllPricesSensor(CKWPriceSensorBase):
     """Sensor for all CKW prices of the day."""
+
+    # Up to ~192 slots; keep them out of the recorder database
+    _unrecorded_attributes = frozenset({"prices"})
 
     @property
     def unique_id(self) -> str:
