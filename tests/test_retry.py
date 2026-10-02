@@ -37,7 +37,7 @@ def _load_package():
     _stub("aiohttp", ClientSession=object, ClientError=Exception, ClientTimeout=object)
     _stub("homeassistant")
     _stub("homeassistant.config_entries", ConfigEntry=object)
-    _stub("homeassistant.core", HomeAssistant=object)
+    _stub("homeassistant.core", HomeAssistant=object, callback=lambda func: func)
     _stub("homeassistant.helpers")
     _stub("homeassistant.helpers.entity_registry")
     sys.modules["homeassistant.helpers"].entity_registry = sys.modules[
@@ -73,8 +73,8 @@ class RetryIntervalTest(unittest.TestCase):
             asyncio.run(coordinator._async_update_data())
         self.assertEqual(coordinator.update_interval, timedelta(minutes=15))
 
-        coordinator._fetch_all = AsyncMock(return_value={"ok": True})
-        self.assertEqual(asyncio.run(coordinator._async_update_data()), {"ok": True})
+        coordinator._fetch_all = AsyncMock(return_value={"ok": True, "tomorrow": {"min_price": 0.1}})
+        self.assertEqual(asyncio.run(coordinator._async_update_data()), {"ok": True, "tomorrow": {"min_price": 0.1}})
         self.assertEqual(coordinator.update_interval, timedelta(hours=6))
 
 

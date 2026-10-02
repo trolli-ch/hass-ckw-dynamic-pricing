@@ -6,18 +6,18 @@ from typing import Any, Dict
 
 import aiohttp
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .price import TIMEZONE, get_day_prices
+from .price import TIMEZONE, day_stats, get_day_prices, next_refresh_interval
 
 _LOGGER = logging.getLogger(__name__)
 
 DOMAIN = "ckw_dynamic_pricing"
-PLATFORMS = ["sensor"]
+PLATFORMS = ["sensor", "binary_sensor"]
 SCAN_INTERVAL = timedelta(hours=6)
 RETRY_INTERVAL = timedelta(minutes=15)  # used after a failed API fetch
 
@@ -37,6 +37,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await coordinator.async_config_entry_first_refresh()
     hass.data[DOMAIN][entry.entry_id] = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    # Re-evaluate all price states whenever a 15-minute slot starts (no API call)
+    @callback
+    def _quarter_hour(now: datetime) -> None:
+        coordinator.async_update_listeners()
+
+    entry.async_on_unload(
+        async_track_time_change(
+            hass, _quarter_hour, minute=(0, 15, 30, 45), second=5
+        )
+    )
     # Switch the daily statistics over right after midnight without an API call
     entry.async_on_unload(
         async_track_time_change(
@@ -121,7 +131,10 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
         except UpdateFailed:
             self.update_interval = RETRY_INTERVAL
             raise
-        self.update_interval = SCAN_INTERVAL
+        # Poll sooner while tomorrow's prices are still unpublished
+        self.update_interval = next_refresh_interval(
+            datetime.now(TIMEZONE), bool(data.get("tomorrow"))
+        )
         return data
 
     async def _fetch_all(self) -> Dict[str, Any]:
@@ -151,18 +164,13 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
         if not prices_today:
             return {}
 
-        today_prices = [
-            entry["integrated"][0]["value"]
-            for entry in prices_today
-            if "integrated" in entry and entry["integrated"]
-        ]
-
-        if not today_prices:
+        today_stats = day_stats(prices_today)
+        if today_stats is None:
             raise UpdateFailed("No price data found in API response")
 
+        tomorrow = datetime.now(TIMEZONE).date() + timedelta(days=1)
         return {
-            "min_price": round(min(today_prices), 4),
-            "max_price": round(max(today_prices), 4),
-            "avg_price": round(sum(today_prices) / len(today_prices), 4),
+            **today_stats,
+            "tomorrow": day_stats(get_day_prices(prices_all, tomorrow)),
             "prices": prices_all,
         }
