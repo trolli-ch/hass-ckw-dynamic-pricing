@@ -61,6 +61,45 @@ def parse_slots(prices: list[dict[str, Any]]) -> list[Slot]:
     return sorted(slots)
 
 
+def to_hourly(prices: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Merge the 15-minute entries of each hour into one hourly entry.
+
+    CKW only changes its prices once per hour, so the four quarter-hour values
+    are identical. An hour whose values differ (or that is incomplete) is left
+    as the original entries, so no information is ever dropped.
+    """
+    groups: dict[datetime, list[tuple[datetime, datetime, dict[str, Any]]]] = {}
+    passthrough = []
+    for entry in prices:
+        start = parse_timestamp(entry.get("start_timestamp"))
+        end = parse_timestamp(entry.get("end_timestamp"))
+        if start is None or end is None or entry_value(entry) is None:
+            passthrough.append(entry)
+            continue
+        hour = start.astimezone(TIMEZONE).replace(minute=0, second=0, microsecond=0)
+        groups.setdefault(hour, []).append((start, end, entry))
+    result = list(passthrough)
+    for hour, items in groups.items():
+        items.sort(key=lambda item: item[0])
+        values = {entry_value(item[2]) for item in items}
+        contiguous = all(a[1] == b[0] for a, b in zip(items, items[1:]))
+        covers_hour = (
+            items[0][0] == hour and items[-1][1] - items[0][0] == timedelta(hours=1)
+        )
+        if len(items) > 1 and len(values) == 1 and contiguous and covers_hour:
+            first, last = items[0][2], items[-1][2]
+            result.append(
+                {
+                    **first,
+                    "start_timestamp": first["start_timestamp"],
+                    "end_timestamp": last["end_timestamp"],
+                }
+            )
+        else:
+            result.extend(item[2] for item in items)
+    return result
+
+
 def get_current_price(
     prices: list[dict[str, Any]], now: datetime | None = None
 ) -> float | None:

@@ -12,7 +12,13 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .price import TIMEZONE, day_stats, get_day_prices, next_refresh_interval
+from .price import (
+    TIMEZONE,
+    day_stats,
+    get_day_prices,
+    next_refresh_interval,
+    to_hourly,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -37,14 +43,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await coordinator.async_config_entry_first_refresh()
     hass.data[DOMAIN][entry.entry_id] = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    # Re-evaluate all price states whenever a 15-minute slot starts (no API call)
+    # Re-evaluate all price states whenever a new hour starts (no API call)
     @callback
-    def _quarter_hour(now: datetime) -> None:
+    def _new_hour(now: datetime) -> None:
         coordinator.async_update_listeners()
 
     entry.async_on_unload(
         async_track_time_change(
-            hass, _quarter_hour, minute=(0, 15, 30, 45), second=5
+            hass, _new_hour, minute=0, second=5
         )
     )
     # Switch the daily statistics over right after midnight without an API call
@@ -153,7 +159,8 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
             if not prices_today:
                 raise UpdateFailed("No price data received from CKW API for today")
 
-            combined = prices_today + prices_tomorrow
+            prices_today = to_hourly(prices_today)
+            combined = prices_today + to_hourly(prices_tomorrow)
             return self._process_data(prices_today, combined)
 
         except aiohttp.ClientError as err:
