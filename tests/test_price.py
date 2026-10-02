@@ -64,3 +64,40 @@ class CurrentPriceTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HourlyTest(unittest.TestCase):
+    def quarters(self, hour, values):
+        return [
+            slot(
+                f"2026-07-01T{hour:02d}:{15 * i:02d}:00+02:00",
+                f"2026-07-01T{hour:02d}:{15 * i + 15:02d}:00+02:00"
+                if i < 3
+                else f"2026-07-01T{hour + 1:02d}:00:00+02:00",
+                v,
+            )
+            for i, v in enumerate(values)
+        ]
+
+    def test_identical_quarters_merge(self):
+        hourly = price.to_hourly(self.quarters(12, [0.2] * 4) + self.quarters(13, [0.3] * 4))
+        self.assertEqual(len(hourly), 2)
+        slots = price.parse_slots(hourly)
+        self.assertEqual(slots[0].end - slots[0].start, timedelta(hours=1))
+        self.assertEqual([s.value for s in slots], [0.2, 0.3])
+
+    def test_differing_quarters_kept(self):
+        quarters = self.quarters(12, [0.2, 0.2, 0.3, 0.3])
+        self.assertEqual(len(price.to_hourly(quarters)), 4)
+
+    def test_incomplete_hour_kept(self):
+        self.assertEqual(len(price.to_hourly(self.quarters(12, [0.2] * 4)[:3])), 3)
+
+    def test_current_price_and_window(self):
+        hourly = price.to_hourly(
+            self.quarters(10, [0.3] * 4) + self.quarters(11, [0.1] * 4) + self.quarters(12, [0.2] * 4)
+        )
+        now = datetime(2026, 7, 1, 8, 20, tzinfo=timezone.utc)  # 10:20 local
+        self.assertEqual(price.get_current_price(hourly, now), 0.3)
+        win = price.find_window(hourly, 2, now)
+        self.assertAlmostEqual(win.avg_price, 0.15)

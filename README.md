@@ -24,7 +24,7 @@ Nach Installation:
 
 ## Entitäten
 
-Alle Entitäten gehören zum Gerät «CKW». Preise in CHF/kWh, Zustände werden zu jeder Viertelstunde neu berechnet.
+Alle Entitäten gehören zum Gerät «CKW». Preise in CHF/kWh, Zustände werden zu jeder vollen Stunde neu berechnet (CKW ändert die Preise nur stündlich, die Viertelstundenwerte der API werden zu Stunden-Slots zusammengefasst).
 
 **Preise**
 - `sensor.ckw_current_price` – aktueller Preis
