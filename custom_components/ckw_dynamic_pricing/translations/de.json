@@ -9,5 +9,62 @@
     "error": {
       "unknown": "Ein unbekannter Fehler ist aufgetreten"
     }
+  },
+  "entity": {
+    "sensor": {
+      "current_price": {
+        "name": "Aktueller Preis"
+      },
+      "min_price": {
+        "name": "Minimaler Preis heute"
+      },
+      "max_price": {
+        "name": "Maximaler Preis heute"
+      },
+      "avg_price": {
+        "name": "Durchschnittspreis heute"
+      },
+      "min_price_tomorrow": {
+        "name": "Minimaler Preis morgen"
+      },
+      "max_price_tomorrow": {
+        "name": "Maximaler Preis morgen"
+      },
+      "avg_price_tomorrow": {
+        "name": "Durchschnittspreis morgen"
+      },
+      "next_price": {
+        "name": "Nächster Preis"
+      },
+      "price_in_one_hour": {
+        "name": "Preis in einer Stunde"
+      },
+      "price_rank": {
+        "name": "Preisrang heute"
+      },
+      "cheapest_2h_window": {
+        "name": "Günstigstes 2-h-Fenster"
+      },
+      "cheapest_4h_window": {
+        "name": "Günstigstes 4-h-Fenster"
+      },
+      "most_expensive_2h_window": {
+        "name": "Teuerstes 2-h-Fenster"
+      },
+      "all_prices": {
+        "name": "Alle Preise"
+      }
+    },
+    "binary_sensor": {
+      "in_cheapest_2h_window": {
+        "name": "Im günstigsten 2-h-Fenster"
+      },
+      "in_cheapest_4h_window": {
+        "name": "Im günstigsten 4-h-Fenster"
+      },
+      "in_most_expensive_2h_window": {
+        "name": "Im teuersten 2-h-Fenster"
+      }
+    }
   }
 }
