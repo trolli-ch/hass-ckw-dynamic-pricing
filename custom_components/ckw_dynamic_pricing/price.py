@@ -7,10 +7,10 @@ from zoneinfo import ZoneInfo
 
 TIMEZONE = ZoneInfo("Europe/Zurich")
 
-# CKW publishes tomorrow's prices in the afternoon; poll more often from then on
-PUBLISH_HOUR = 18
+# CKW publishes tomorrow's prices from noon; poll more often from then on
+PUBLISH_HOUR = 12
 NORMAL_INTERVAL = timedelta(hours=6)
-TOMORROW_RETRY_INTERVAL = timedelta(minutes=30)
+TOMORROW_RETRY_INTERVAL = timedelta(minutes=15)
 
 
 class Slot(NamedTuple):

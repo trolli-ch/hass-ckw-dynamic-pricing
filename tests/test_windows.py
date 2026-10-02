@@ -93,17 +93,17 @@ class RefreshIntervalTest(unittest.TestCase):
 
     def test_missing_tomorrow_after_publish_hour_retries(self):
         now = datetime(2026, 7, 1, 19, 0, tzinfo=price.TIMEZONE)
-        self.assertEqual(price.next_refresh_interval(now, False), timedelta(minutes=30))
+        self.assertEqual(price.next_refresh_interval(now, False), timedelta(minutes=15))
 
     def test_missing_tomorrow_before_publish_hour_wakes_at_publish_hour(self):
-        now = datetime(2026, 7, 1, 16, 30, tzinfo=price.TIMEZONE)
+        now = datetime(2026, 7, 1, 10, 30, tzinfo=price.TIMEZONE)
         self.assertEqual(price.next_refresh_interval(now, False), timedelta(hours=1, minutes=30))
         now = datetime(2026, 7, 1, 6, 0, tzinfo=price.TIMEZONE)
         self.assertEqual(price.next_refresh_interval(now, False), timedelta(hours=6))
 
     def test_works_with_utc_now(self):
         now = datetime(2026, 7, 1, 17, 30, tzinfo=timezone.utc)  # 19:30 local
-        self.assertEqual(price.next_refresh_interval(now, False), timedelta(minutes=30))
+        self.assertEqual(price.next_refresh_interval(now, False), timedelta(minutes=15))
 
 
 if __name__ == "__main__":

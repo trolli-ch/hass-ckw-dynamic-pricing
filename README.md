@@ -34,7 +34,7 @@ Alle Entitäten gehören zum Gerät «CKW». Preise in CHF/kWh, Zustände werden
 
 **Tagesstatistik**
 - `sensor.ckw_min_price`, `sensor.ckw_max_price`, `sensor.ckw_avg_price` – heute
-- `sensor.ckw_min_price_tomorrow`, `sensor.ckw_max_price_tomorrow`, `sensor.ckw_avg_price_tomorrow` – morgen, sobald CKW die Preise veröffentlicht hat (sonst unbekannt; ab 18 Uhr wird alle 30 Minuten nachgefragt)
+- `sensor.ckw_min_price_tomorrow`, `sensor.ckw_max_price_tomorrow`, `sensor.ckw_avg_price_tomorrow` – morgen, sobald CKW die Preise veröffentlicht hat (sonst unbekannt; ab 12 Uhr wird alle 15 Minuten nachgefragt)
 
 **Fenster** (heute und morgen, nur noch nicht beendete Slots)
 - `sensor.ckw_cheapest_2h_window`, `sensor.ckw_cheapest_4h_window`, `sensor.ckw_most_expensive_2h_window` – Startzeit, Attribute `end` und `avg_price`
