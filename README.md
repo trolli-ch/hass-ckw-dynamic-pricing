@@ -30,7 +30,7 @@ Alle Entitäten gehören zum Gerät «CKW». Preise in CHF/kWh, Zustände werden
 - `sensor.ckw_current_price` – aktueller Preis
 - `sensor.ckw_next_price` – Preis des nächsten Slots (Attribut `starts_at`)
 - `sensor.ckw_price_in_one_hour` – Preis in einer Stunde
-- `sensor.ckw_price_rank` – Rang des aktuellen Slots heute in % (0 = günstigster, 100 = teuerster)
+- `sensor.ckw_price_rank_today` – Rang des aktuellen Slots heute in % (0 = günstigster, 100 = teuerster)
 
 **Tagesstatistik**
 - `sensor.ckw_min_price`, `sensor.ckw_max_price`, `sensor.ckw_avg_price` – heute
