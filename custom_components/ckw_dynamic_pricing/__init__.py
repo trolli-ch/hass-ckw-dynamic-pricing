@@ -67,16 +67,11 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
         super().__init__(
             hass,
             _LOGGER,
+            config_entry=entry,
             name=DOMAIN,
             update_interval=SCAN_INTERVAL,
         )
-        self.entry = entry
         self.api_url = "https://e-ckw-public-data.de-c1.eu1.cloudhub.io/api/v1/netzinformationen/energie/dynamische-preise"
-
-    @property
-    def config(self) -> Dict[str, Any]:
-        """Return the entry data overlaid with the options."""
-        return {**self.entry.data, **self.entry.options}
 
     async def async_new_hour(self, now: datetime) -> None:
         """Refresh the states for the new hour; roll the day over if it changed."""
@@ -107,7 +102,7 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
         start = datetime.combine(date, time(0, 0), tzinfo=TIMEZONE).isoformat()
         end = datetime.combine(date, time(23, 59), tzinfo=TIMEZONE).isoformat()
         params = {
-            "tariff_name": self.config.get("tariff_name", "home_dynamic"),
+            "tariff_name": "home_dynamic",
             "start_timestamp": start,
             "end_timestamp": end,
             "tariff_type": "integrated",
