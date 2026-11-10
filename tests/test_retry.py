@@ -22,7 +22,7 @@ class UpdateFailed(Exception):
 class DataUpdateCoordinator:
     """Stand-in for homeassistant's DataUpdateCoordinator."""
 
-    def __init__(self, hass, logger, name, update_interval):
+    def __init__(self, hass, logger, name, update_interval, config_entry=None):
         self.update_interval = update_interval
         self.data = None
         self.hass = hass
