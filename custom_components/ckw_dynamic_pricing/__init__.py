@@ -6,7 +6,7 @@ from typing import Any, Dict
 
 import aiohttp
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_track_time_change
@@ -43,21 +43,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await coordinator.async_config_entry_first_refresh()
     hass.data[DOMAIN][entry.entry_id] = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    # Re-evaluate all price states whenever a new hour starts (no API call)
-    @callback
-    def _new_hour(now: datetime) -> None:
-        coordinator.async_update_listeners()
-
+    # Re-evaluate all price states exactly when a new hour starts (no API call);
+    # the first tick of a new day also switches the daily statistics over
     entry.async_on_unload(
-        async_track_time_change(
-            hass, _new_hour, minute=0, second=5
-        )
-    )
-    # Switch the daily statistics over right after midnight without an API call
-    entry.async_on_unload(
-        async_track_time_change(
-            hass, coordinator.async_midnight_rollover, hour=0, minute=0, second=5
-        )
+        async_track_time_change(hass, coordinator.async_new_hour, minute=0, second=0)
     )
     return True
 
@@ -89,11 +78,15 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
         """Return the entry data overlaid with the options."""
         return {**self.entry.data, **self.entry.options}
 
-    async def async_midnight_rollover(self, now: datetime) -> None:
-        """Promote tomorrow's cached prices to today's statistics after midnight."""
+    async def async_new_hour(self, now: datetime) -> None:
+        """Refresh the states for the new hour; roll the day over if it changed."""
         if not self.data:
             return
         today: date = datetime.now(TIMEZONE).date()
+        if self.data.get("day") == today:
+            self.async_update_listeners()
+            return
+        # New day: promote tomorrow's cached prices to today's statistics
         prices_all = self.data.get("prices", [])
         prices_today = get_day_prices(prices_all, today)
         try:
@@ -103,6 +96,10 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
         except UpdateFailed:
             await self.async_request_refresh()
             return
+        # async_set_updated_data re-arms the fetch timer, so set the interval first
+        self.update_interval = next_refresh_interval(
+            datetime.now(TIMEZONE), bool(data.get("tomorrow"))
+        )
         self.async_set_updated_data(data)
 
     async def _fetch_day(self, session: aiohttp.ClientSession, date) -> list:
@@ -159,6 +156,10 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
             if not prices_today:
                 raise UpdateFailed("No price data received from CKW API for today")
 
+            if not prices_tomorrow and self.data:
+                # A failed fetch must not wipe tomorrow's prices we already have
+                prices_tomorrow = get_day_prices(self.data.get("prices", []), tomorrow)
+
             prices_today = to_hourly(prices_today)
             combined = prices_today + to_hourly(prices_tomorrow)
             return self._process_data(prices_today, combined)
@@ -175,9 +176,11 @@ class CKWPricingCoordinator(DataUpdateCoordinator):
         if today_stats is None:
             raise UpdateFailed("No price data found in API response")
 
-        tomorrow = datetime.now(TIMEZONE).date() + timedelta(days=1)
+        today = datetime.now(TIMEZONE).date()
+        tomorrow = today + timedelta(days=1)
         return {
             **today_stats,
+            "day": today,
             "tomorrow": day_stats(get_day_prices(prices_all, tomorrow)),
             "prices": prices_all,
         }

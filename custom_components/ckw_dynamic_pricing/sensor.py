@@ -34,21 +34,26 @@ def _round(value: float | None) -> float | None:
     return None if value is None else round(value, 4)
 
 
-def _window(data: dict, now: datetime, hours: int, cheapest: bool):
-    return find_window(data["prices"], hours, now, cheapest)
+def _window(data: dict, now: datetime, hours: int, cheapest: bool, offset: int):
+    day = now.astimezone(TIMEZONE).date() + timedelta(days=offset)
+    return find_window(data["prices"], hours, day, cheapest)
 
 
-def _window_start(hours: int, cheapest: bool) -> Callable[[dict, datetime], Any]:
+def _window_start(
+    hours: int, cheapest: bool, offset: int
+) -> Callable[[dict, datetime], Any]:
     def value(data: dict, now: datetime) -> datetime | None:
-        window = _window(data, now, hours, cheapest)
+        window = _window(data, now, hours, cheapest, offset)
         return window.start if window else None
 
     return value
 
 
-def _window_attrs(hours: int, cheapest: bool) -> Callable[[dict, datetime], dict]:
+def _window_attrs(
+    hours: int, cheapest: bool, offset: int
+) -> Callable[[dict, datetime], dict]:
     def attrs(data: dict, now: datetime) -> dict:
-        window = _window(data, now, hours, cheapest)
+        window = _window(data, now, hours, cheapest, offset)
         if window is None:
             return {}
         return {
@@ -143,13 +148,14 @@ SENSORS: tuple[CKWSensorDescription, ...] = (
     ),
     *(
         CKWSensorDescription(
-            key=key,
-            translation_key=key,
+            key=key + suffix,
+            translation_key=key + suffix,
             icon=icon,
             device_class=SensorDeviceClass.TIMESTAMP,
-            value_fn=_window_start(hours, cheapest),
-            attrs_fn=_window_attrs(hours, cheapest),
+            value_fn=_window_start(hours, cheapest, offset),
+            attrs_fn=_window_attrs(hours, cheapest, offset),
         )
+        for suffix, offset in (("", 0), ("_tomorrow", 1))
         for key, icon, hours, cheapest in (
             ("cheapest_2h_window", "mdi:clock-check", 2, True),
             ("cheapest_4h_window", "mdi:clock-check", 4, True),

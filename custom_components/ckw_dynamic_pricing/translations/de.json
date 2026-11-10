@@ -51,6 +51,15 @@
       "most_expensive_2h_window": {
         "name": "Teuerstes 2-h-Fenster"
       },
+      "cheapest_2h_window_tomorrow": {
+        "name": "Günstigstes 2-h-Fenster morgen"
+      },
+      "cheapest_4h_window_tomorrow": {
+        "name": "Günstigstes 4-h-Fenster morgen"
+      },
+      "most_expensive_2h_window_tomorrow": {
+        "name": "Teuerstes 2-h-Fenster morgen"
+      },
       "all_prices": {
         "name": "Alle Preise"
       }
