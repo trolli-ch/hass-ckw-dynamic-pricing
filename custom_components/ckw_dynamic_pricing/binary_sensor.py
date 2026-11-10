@@ -61,7 +61,7 @@ async def async_setup_entry(
 
 
 class CKWWindowBinarySensor(CKWEntity, BinarySensorEntity):
-    """On while the current time lies inside the cheapest / most expensive window."""
+    """On while the current time lies inside today's cheapest / most expensive window."""
 
     entity_description: CKWBinarySensorDescription
 
@@ -73,7 +73,10 @@ class CKWWindowBinarySensor(CKWEntity, BinarySensorEntity):
         now = datetime.now(TIMEZONE)
         description = self.entity_description
         window = find_window(
-            self.coordinator.data["prices"], description.hours, now, description.cheapest
+            self.coordinator.data["prices"],
+            description.hours,
+            now.date(),
+            description.cheapest,
         )
         if window is None:
             return None

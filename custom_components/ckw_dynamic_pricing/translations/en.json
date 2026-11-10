@@ -51,6 +51,15 @@
       "most_expensive_2h_window": {
         "name": "Most expensive 2h window"
       },
+      "cheapest_2h_window_tomorrow": {
+        "name": "Cheapest 2h window tomorrow"
+      },
+      "cheapest_4h_window_tomorrow": {
+        "name": "Cheapest 4h window tomorrow"
+      },
+      "most_expensive_2h_window_tomorrow": {
+        "name": "Most expensive 2h window tomorrow"
+      },
       "all_prices": {
         "name": "All prices"
       }

@@ -29,41 +29,45 @@ def day(values, start=BASE):
     return out
 
 
+DAY = BASE.date()
+
+
 class WindowTest(unittest.TestCase):
     def setUp(self):
         # 16 slots = 4 hours; cheap block at slots 4-11, dear block at 0-3
         self.prices = day([0.5] * 4 + [0.1] * 8 + [0.3] * 4)
 
     def test_cheapest_window(self):
-        w = price.find_window(self.prices, 2, BASE)
+        w = price.find_window(self.prices, 2, DAY)
         self.assertEqual(w.start, BASE + timedelta(hours=1))
         self.assertEqual(w.end, BASE + timedelta(hours=3))
         self.assertEqual(w.avg_price, 0.1)
 
     def test_most_expensive_window(self):
-        w = price.find_window(self.prices, 2, BASE, cheapest=False)
+        w = price.find_window(self.prices, 2, DAY, cheapest=False)
         self.assertEqual(w.start, BASE)
         # 0.5 for 1 h then 0.1 for 1 h
         self.assertEqual(w.avg_price, 0.3)
 
-    def test_past_slots_are_ignored(self):
-        now = BASE + timedelta(hours=3, minutes=10)
-        w = price.find_window(self.prices, 2, now)
-        self.assertIsNone(w)  # only ~50 min left
-        w = price.find_window(self.prices, 0.5, now)
-        self.assertEqual(w.avg_price, 0.3)
+    def test_window_too_long_for_the_data(self):
+        self.assertIsNone(price.find_window(self.prices, 5, DAY))
 
-    def test_window_includes_current_slot(self):
-        now = BASE + timedelta(hours=1, minutes=20)
-        w = price.find_window(self.prices, 2, now)
-        self.assertEqual(w.start, BASE + timedelta(hours=1, minutes=15))
+    def test_window_is_per_day(self):
+        # tomorrow is cheaper, but must not replace today's window
+        tomorrow = day([0.01] * 8, BASE + timedelta(days=1))
+        prices = self.prices + tomorrow
+        self.assertEqual(price.find_window(prices, 2, DAY).start, BASE + timedelta(hours=1))
+        w = price.find_window(prices, 2, DAY + timedelta(days=1))
+        self.assertEqual(w.start, BASE + timedelta(days=1))
+        self.assertEqual(w.avg_price, 0.01)
+        self.assertIsNone(price.find_window(prices, 2, DAY + timedelta(days=2)))
 
     def test_gap_breaks_window(self):
         prices = day([0.1] * 4) + day([0.1] * 4, BASE + timedelta(hours=2))
-        self.assertIsNone(price.find_window(prices, 2, BASE))
+        self.assertIsNone(price.find_window(prices, 2, DAY))
 
     def test_no_prices(self):
-        self.assertIsNone(price.find_window([], 2, BASE))
+        self.assertIsNone(price.find_window([], 2, DAY))
 
 
 class RankStatsTest(unittest.TestCase):

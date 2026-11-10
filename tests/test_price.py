@@ -99,5 +99,5 @@ class HourlyTest(unittest.TestCase):
         )
         now = datetime(2026, 7, 1, 8, 20, tzinfo=timezone.utc)  # 10:20 local
         self.assertEqual(price.get_current_price(hourly, now), 0.3)
-        win = price.find_window(hourly, 2, now)
+        win = price.find_window(hourly, 2, now.date())
         self.assertAlmostEqual(win.avg_price, 0.15)

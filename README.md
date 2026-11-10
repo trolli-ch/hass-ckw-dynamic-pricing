@@ -36,9 +36,10 @@ Alle Entitäten gehören zum Gerät «CKW». Preise in CHF/kWh, Zustände werden
 - `sensor.ckw_min_price`, `sensor.ckw_max_price`, `sensor.ckw_avg_price` – heute
 - `sensor.ckw_min_price_tomorrow`, `sensor.ckw_max_price_tomorrow`, `sensor.ckw_avg_price_tomorrow` – morgen, sobald CKW die Preise veröffentlicht hat (sonst unbekannt; ab 12 Uhr wird alle 15 Minuten nachgefragt)
 
-**Fenster** (heute und morgen, nur noch nicht beendete Slots)
-- `sensor.ckw_cheapest_2h_window`, `sensor.ckw_cheapest_4h_window`, `sensor.ckw_most_expensive_2h_window` – Startzeit, Attribute `end` und `avg_price`
-- `binary_sensor.ckw_in_cheapest_2h_window`, `..._in_cheapest_4h_window`, `..._in_most_expensive_2h_window` – an, solange die aktuelle Zeit im Fenster liegt
+**Fenster** (pro Tag über alle Slots des Tages; das Fenster von heute bleibt fest, auch während es läuft)
+- `sensor.ckw_cheapest_2h_window`, `sensor.ckw_cheapest_4h_window`, `sensor.ckw_most_expensive_2h_window` – Startzeit des Fensters von heute, Attribute `end` und `avg_price`
+- `sensor.ckw_cheapest_2h_window_tomorrow`, `sensor.ckw_cheapest_4h_window_tomorrow`, `sensor.ckw_most_expensive_2h_window_tomorrow` – dasselbe für morgen (unbekannt, bis die Preise von morgen da sind)
+- `binary_sensor.ckw_in_cheapest_2h_window`, `..._in_cheapest_4h_window`, `..._in_most_expensive_2h_window` – an, solange die aktuelle Zeit im Fenster von heute liegt
 
 **Sonstiges**
 - `sensor.ckw_all_prices` – Anzahl Preisslots, alle Slots als Attribut `prices`

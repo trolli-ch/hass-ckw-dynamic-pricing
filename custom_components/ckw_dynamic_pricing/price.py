@@ -146,14 +146,14 @@ def get_next_slot(prices: list[dict[str, Any]], now: datetime) -> Slot | None:
 
 
 def find_window(
-    prices: list[dict[str, Any]], hours: float, now: datetime, cheapest: bool = True
+    prices: list[dict[str, Any]], hours: float, day: date, cheapest: bool = True
 ) -> Window | None:
     """Return the cheapest (or most expensive) run of consecutive slots lasting `hours`.
 
-    Only slots that have not ended yet are considered, so the window may have
-    started already (it contains the current slot).
+    All slots starting on the given Swiss local date are considered, including
+    those already over, so the window of a day stays fixed while it is running.
     """
-    slots = [s for s in parse_slots(prices) if s.end > now]
+    slots = parse_slots(get_day_prices(prices, day))
     target = timedelta(hours=hours)
     best: Window | None = None
     for i, first in enumerate(slots):
